@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Diagnostics;
 
 public abstract class PlayerBase
 {
@@ -18,7 +19,7 @@ public abstract class PlayerBase
     {
         // provide 2 operator cards and random 5 number cards
         myHand.Clear();
-        myHand.AddRange(deckManager.GetNumberDeck(5));
+        myHand.AddRange(deckManager.GetNumberDeck(count: 5));
         myHand.AddRange(deckManager.GetOperatorDeck());
     }
 
@@ -44,5 +45,62 @@ public abstract class PlayerBase
             else if (op == OperatorEnum.Minus) result -= nextNum;
         }
         return result;
+    }
+
+    public void MakeMove()
+    {
+        myExpression.Clear();
+
+        List<Card> nums = new List<Card>();
+        List<Card> ops = new List<Card>();
+
+        foreach (Card card in myHand)
+        {
+            if (card.type == CardType.Number) nums.Add(card);
+            else if (card.type == CardType.Operator) ops.Add(card);
+        }
+
+        nums.Sort((a, b) => a.numberValue.CompareTo(b.numberValue));
+
+        Card highestNum1 = nums[nums.Count - 1];
+        Card highestNum2 = nums[nums.Count - 2];
+        Card lowestNum = nums[0];
+        Card plus = null;
+        Card minus = null;
+        foreach (Card val in ops)
+        {
+            if (val.operatorValue == OperatorEnum.Plus)
+            {
+                plus = val;
+            }
+            else if (val.operatorValue == OperatorEnum.Minus)
+            {
+                minus = val;
+            }
+        }
+
+        if (plus is not null && minus is not null)
+        {
+            myExpression.Add(highestNum1);
+            myExpression.Add(plus);
+            myExpression.Add(highestNum2);
+            myExpression.Add(minus);
+            myExpression.Add(lowestNum);
+        }
+    }
+
+    public int ReturnResult()
+    {
+        int result;
+
+        MakeMove();
+        result = CalculateExpression();
+
+        return result;
+    }
+
+    public void ClearExpression()
+    {
+        myExpression.Clear();
     }
 }
