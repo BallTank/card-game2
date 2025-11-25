@@ -32,7 +32,7 @@ public class GameView : MonoBehaviour
     private void Awake()
     {
         // why i can't use rectTransform?
-        restartBtn.transform.localScale = new Vector2(0, 0);        
+        restartBtn.gameObject.SetActive(false);
     }
 
     private void Start()
@@ -40,63 +40,62 @@ public class GameView : MonoBehaviour
         player = gameManager.player;
         ai = gameManager.ai;
 
-        playerResult = player.ReturnResult();
-        aiResult = ai.ReturnResult();
-
-        DisplayExpression(player.myExpression, playerExpressionContainer);
-        DisplayExpression(ai.myExpression, aIExpressionContainer);
-        DisplayResult(textContainer: playerResultText, result: playerResult);
-        DisplayResult(textContainer: aiResultText, result: aiResult);
-
         AddOnClickCalculator();
         AddOnClickRestart();
         AddOnClickResetExpression();
     }
 
-    // get the player's hand
-    public void DisplayPlayerExpression(Card clickedCard)
+
+    public void DisplayExpression(List<Card> expression, bool isPlayer)
     {
-        // PlayerBase class has myExpression list. 
-        // To use a list to display, either destroy all the gameobj,
-        // or search from where not on display should be done
-        // So, just make the objects when the cards are clicked.
-        GameObject obj = Instantiate(cardPrefab, playerExpressionContainer);
+        Transform container = isPlayer ? playerExpressionContainer : aIExpressionContainer;
+
+        DisplayCard(expression, container);
+    }
+
+    public void SpawnHand(List<Card> handCards, bool isPlayer, System.Action<Card> onCardClicked = null)
+    {
+        Transform container = isPlayer ? playerHandContainer : aIHandContainer;
+        bool isExpression = false;
+
+        DisplayCard(handCards: handCards, container: container, onCardClicked: onCardClicked, isPlayer: isPlayer, isExpression: isExpression);
+    }
+
+    public void DisplayCard(List<Card> handCards, Transform container, System.Action<Card> onCardClicked = null, bool isPlayer = false, bool isExpression = false)
+    {
+        foreach (Transform child in container)
+        {
+            Destroy(child.gameObject);
+        }
+        foreach (Card card in handCards)
+        {
+            DisplaySingleCard(card: card, onClick: onCardClicked, container: container, isPlayer: isPlayer, isExpression: isExpression);
+        }
+    }
+
+    public void DisplaySingleCard(Card card, System.Action<Card> onClick = null, Transform container = null, bool isPlayer=false, bool isExpression=false)
+    {
+        if (container == null)
+        {
+            container = playerExpressionContainer;
+        }
+
+        GameObject obj = Instantiate(cardPrefab, container);
         CardDisplay display = obj.GetComponent<CardDisplay>();
-        display.Setup(card: clickedCard, isExpression: true);
-
-        // calculate cards and show the result on the player score
-    }
-
-    public void DisplayExpression(List<Card> expression, Transform container)
-    {
-        foreach(Card card in expression)
-        {
-            GameObject obj = Instantiate(cardPrefab, container);
-            CardDisplay display = obj.GetComponent<CardDisplay>();
-            display.Setup(card: card, isExpression: true);
-        }
-    }
-
-    public void SpawnHand(List<Card> handCards, System.Action<Card> onCardClicked = null, bool isPlayer = true)
-    {
-        // it destroies player's cards
-        //foreach(Transform child in playerHandContainer)
-        //{
-        //    Destroy(child.gameObject);
-        //}
-
-        foreach(Card card in handCards)
-        {
-            GameObject obj = Instantiate(cardPrefab, isPlayer ? playerHandContainer : aIHandContainer);
-            CardDisplay display = obj.GetComponent<CardDisplay>();
-            display.Setup(card: card, onClick: onCardClicked, isPlayer);
-        }
+        display.Setup(card: card, onClick: onClick, isPlayer: isPlayer, isExpression: isExpression);
     }
 
     private void AddOnClickCalculator()
     {
+        string msg = "";
+
         calculatorBtn.onClick.RemoveAllListeners();
-        calculatorBtn.onClick.AddListener(() => OnCalculatePressed(player, ai));        
+        calculatorBtn.onClick.AddListener(() =>
+        {
+            msg = gameManager.OnCalculatePressed(player, ai);
+            UpdateResult(msg);
+            restartBtn.gameObject.SetActive(true);
+        });
     }
 
     private void AddOnClickRestart()
@@ -111,24 +110,7 @@ public class GameView : MonoBehaviour
         resetBtn.onClick.AddListener(OnResetPressed);
     }
 
-    // Calculate button method
-    public void OnCalculatePressed(HumanPlayer player, AIPlayer ai)
-    {
-        int playerResult = player.CalculateExpression();
-
-        //ai.MakeMove();
-        //int aiResult = ai.CalculateExpression();       
-
-        // compare
-        string msg = $"Player: {playerResult} vs AI: {aiResult}\n";
-        if (playerResult > aiResult) msg += "Player Win!";
-        else if (playerResult < aiResult) msg += "AI Win!";
-        else { msg += "Draw!"; }
-
-        UpdateResult(msg);
-
-        restartBtn.transform.localScale = new Vector2(1, 1);
-    }
+ 
 
     public void OnRestartPressed()
     {
@@ -137,22 +119,20 @@ public class GameView : MonoBehaviour
 
     public void OnResetPressed()
     {
-        // Question: how to get playerExpressionContainer's children gameobjects? It has Card objects
-        // I know the playerExpressionContainer[0] is itself. So it should start from [1]
-        // Answer: do this
         foreach (Transform child in playerExpressionContainer)
         {
             Destroy(child.gameObject);
         }
-        
-        player.ClearExpression();
 
-        playerResult = 0;
-        DisplayResult(textContainer:playerResultText, result: playerResult);
+        gameManager.ResetExpression();
+
+        DisplayResult(result: 0, isPlayer: true);
     }
 
-    public void DisplayResult(TMP_Text textContainer, int result)
+    public void DisplayResult(int result, bool isPlayer)
     {
+        TMP_Text textContainer = isPlayer ? playerResultText : aiResultText;
+        textContainer.text = "";
         textContainer.text = result.ToString();
     }
 
