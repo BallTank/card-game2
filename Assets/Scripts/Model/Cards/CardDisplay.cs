@@ -17,7 +17,7 @@ public class CardDisplay: MonoBehaviour
     // if it is, I only saw Action not Action<T>
     private System.Action<Card> onClickCallback; 
 
-    public void Setup(Card card, System.Action<Card> onClick, bool isPlayer = true)
+    public void Setup(Card card, System.Action<Card> onClick = null, bool isPlayer = true, bool isExpression = false)
     {
         cardData = card;
         onClickCallback = onClick;
@@ -33,7 +33,7 @@ public class CardDisplay: MonoBehaviour
         button.onClick.RemoveAllListeners();
         button.onClick.AddListener(() => onClickCallback(card));
 
-        if(!isPlayer)
+        if(!isPlayer || isExpression)
         {
             button.interactable = false;
         }
