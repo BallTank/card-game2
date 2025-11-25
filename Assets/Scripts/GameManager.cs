@@ -44,6 +44,10 @@ public class GameManager : MonoBehaviour
             Debug.Log($"card: {clickedCard.numberValue}");
         else if (clickedCard.type == CardType.Operator)
             Debug.Log($"card: {clickedCard.operatorValue}");
+
+        int currentResult = player.CalculateCurrentExpression(player.myExpression);
+        gameView.DisplayResult(textContainer: gameView.playerResultText, result: currentResult);
+        gameView.DisplayPlayerExpression(clickedCard);
     }
 
     private void Start()
