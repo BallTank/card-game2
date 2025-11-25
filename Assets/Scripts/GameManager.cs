@@ -9,8 +9,8 @@ public class GameManager : MonoBehaviour
     public AIPlayer ai;
 
     private DeckManager deckManager;
-
-
+    private int playerResult;
+    private int aiResult;
 
     private void Awake()
     {
@@ -19,6 +19,10 @@ public class GameManager : MonoBehaviour
         deckManager = new DeckManager();
 
 
+    }
+
+    private void Start()
+    {
         StartRound();
     }
 
@@ -28,30 +32,56 @@ public class GameManager : MonoBehaviour
         player.GetCards(deckManager);
         ai.GetCards(deckManager);
 
-        // give cards to player and ai
-        // 2. show human hand on UI
-        gameView.SpawnHand(handCards: player.myHand, onCardClicked: OnCardClicked);
-
-        // show ai hand on UI
-        gameView.SpawnHand(handCards: ai.myHand,isPlayer:false);
+        // 2. show on UI
+        UpdateGameUI();
     }
 
     private void OnCardClicked(Card clickedCard)
     {
         // Add to the player expression
         player.myExpression.Add(clickedCard);
-        if (clickedCard.type == CardType.Number)
-            Debug.Log($"card: {clickedCard.numberValue}");
-        else if (clickedCard.type == CardType.Operator)
-            Debug.Log($"card: {clickedCard.operatorValue}");
 
         int currentResult = player.CalculateCurrentExpression(player.myExpression);
-        gameView.DisplayResult(textContainer: gameView.playerResultText, result: currentResult);
-        gameView.DisplayPlayerExpression(clickedCard);
+        gameView.DisplayResult(result: currentResult, isPlayer: true);
+        gameView.DisplaySingleCard(card: clickedCard); // this part give unclickable card
     }
 
-    private void Start()
+    // Calculate button method
+    public string OnCalculatePressed(HumanPlayer player, AIPlayer ai)
     {
+        int playerResult = player.CalculateExpression();
+        int aiResult = ai.CalculateExpression();
+
+        //ai.MakeMove();
+        //int aiResult = ai.CalculateExpression();       
+
+        // compare
+        string msg = $"Player: {playerResult} vs AI: {aiResult}\n";
+        if (playerResult > aiResult) msg += "Player Win!";
+        else if (playerResult < aiResult) msg += "AI Win!";
+        else { msg += "Draw!"; }
+
+        return msg;
+    }
+
+    private void UpdateGameUI()
+    {
+        gameView.SpawnHand(handCards: player.myHand, isPlayer: true, onCardClicked: OnCardClicked);
+        gameView.SpawnHand(handCards: ai.myHand, isPlayer: false);
+
+        playerResult = player.ReturnResult();
+        aiResult = ai.ReturnResult();
+
+        gameView.DisplayExpression(player.myExpression, isPlayer: true);
+        gameView.DisplayExpression(ai.myExpression, isPlayer: false);
+
+        gameView.DisplayResult(result: playerResult, isPlayer: true);
+        gameView.DisplayResult(result: aiResult, isPlayer: false);
+    }
+
+    public void ResetExpression()
+    {
+        player.ClearExpression();
     }
 
     private void OnEnable()
