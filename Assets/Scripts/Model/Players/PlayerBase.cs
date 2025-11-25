@@ -62,6 +62,12 @@ public abstract class PlayerBase
 
         nums.Sort((a, b) => a.numberValue.CompareTo(b.numberValue));
 
+        string msg = "";
+        foreach(var val in nums)
+        {
+            msg += $"{val.numberValue.ToString()} ";
+        }
+
         Card highestNum1 = nums[nums.Count - 1];
         Card highestNum2 = nums[nums.Count - 2];
         Card lowestNum = nums[0];
