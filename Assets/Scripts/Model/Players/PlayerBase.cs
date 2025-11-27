@@ -1,11 +1,9 @@
 using System.Collections.Generic;
-using System.Diagnostics;
+using UnityEngine;
 
 public abstract class PlayerBase
 {
-    // this has the common things of the player and ai
-
-    // provide 2 operator cards and random 5 number cards
+    // this has the common things of the player and ai    
     // calculate the expressions
     // ai picks its own cards
 
@@ -23,83 +21,128 @@ public abstract class PlayerBase
         myHand.AddRange(deckManager.GetOperatorDeck());
     }
 
-
-    // Calculate each expression: player and AI
-    // picking the cards are their own classes' job
+    // As calulate button pressed
+    // this method calculates both expressions of ai and player    
+    // TODO: Multiply and divide are not consiered
     public int CalculateExpression()
     {
         if (myExpression.Count == 0) return 0;
 
-        // Assumes format: Num, Opr, Num, Opr...
-        int result = myExpression[0].numberValue;
+        int result = 0;
+        Card preOprtCard = null;
 
-        // TODO: validation for each places should be added later
-        for(int i = 1; i < myExpression.Count; i += 2)
+        for (int i = 0; i < myExpression.Count; i++)
         {
-            if (i + 1 >= myExpression.Count) break; // prevent out of range
+            if (i % 2 == 0) // number
+            {
+                if (myExpression[i].type == CardType.Operator)  // validation check
+                {
+                    break;
+                }
 
-            OperatorEnum op = myExpression[i].operatorValue;
-            int nextNum = myExpression[i + 1].numberValue;
+                if (preOprtCard is null)
+                { // first number                
 
-            if (op == OperatorEnum.Plus) result += nextNum;
-            else if (op == OperatorEnum.Minus) result -= nextNum;
+                    result += myExpression[i].numberValue;
+                }
+                else
+                {
+                    if (preOprtCard.operatorValue == OperatorEnum.Plus)
+                    {
+                        result += myExpression[i].numberValue;
+                    }
+                    else if (preOprtCard.operatorValue == OperatorEnum.Minus)
+                    {
+                        result -= myExpression[i].numberValue;
+                    }
+                    preOprtCard = null;
+                }
+            }
+            else // operator
+            {
+                if (myExpression[i].type == CardType.Number)  // validation check
+                {
+                    break;
+                }
+                preOprtCard = myExpression[i];
+            }
         }
         return result;
     }
 
-    public void MakeMove()
+    // Set my hand's best expresison
+    // TODO: Validation
+    //public bool SetOptimalExpression()
+    public void SetOptimalExpression()
     {
         myExpression.Clear();
 
         List<Card> nums = new List<Card>();
         List<Card> ops = new List<Card>();
 
-        foreach (Card card in myHand)
+        for (int i = 0; i < myHand.Count; i++)
         {
-            if (card.type == CardType.Number) nums.Add(card);
-            else if (card.type == CardType.Operator) ops.Add(card);
+            if (myHand[i].type == CardType.Number)
+            {
+                nums.Add(myHand[i]);
+                //if (CheckInputValidation(i))
+                //{                    
+                //    return false;   // it's not valid!
+                //}
+            }
+            else if (myHand[i].type == CardType.Operator) ops.Add(myHand[i]);
         }
 
         nums.Sort((a, b) => a.numberValue.CompareTo(b.numberValue));
 
-        string msg = "";
-        foreach(var val in nums)
-        {
-            msg += $"{val.numberValue.ToString()} ";
-        }
+        Card highestNum1Card = nums[nums.Count - 1];
+        Card highestNum2Card = nums[nums.Count - 2];
+        Card lowestNumCard = nums[0];
+        Card plusCard = null;
+        Card minusCard = null;
 
-        Card highestNum1 = nums[nums.Count - 1];
-        Card highestNum2 = nums[nums.Count - 2];
-        Card lowestNum = nums[0];
-        Card plus = null;
-        Card minus = null;
-        foreach (Card val in ops)
+        foreach (Card card in ops)
         {
-            if (val.operatorValue == OperatorEnum.Plus)
+            if (card.operatorValue == OperatorEnum.Plus)
             {
-                plus = val;
+                plusCard = card;
             }
-            else if (val.operatorValue == OperatorEnum.Minus)
+            else if (card.operatorValue == OperatorEnum.Minus)
             {
-                minus = val;
+                minusCard = card;
             }
         }
 
-        if (plus is not null && minus is not null)
+        if (plusCard is not null && minusCard is not null)
         {
-            myExpression.Add(highestNum1);
-            myExpression.Add(plus);
-            myExpression.Add(highestNum2);
-            myExpression.Add(minus);
-            myExpression.Add(lowestNum);
+            myExpression.Add(highestNum1Card);
+            myExpression.Add(plusCard);
+            myExpression.Add(highestNum2Card);
+            myExpression.Add(minusCard);
+            myExpression.Add(lowestNumCard);
         }
+        //return true;
+    }
+
+    // check if the myExpression is in the right place: number and operator
+    public bool CheckInputValidation(int expIdx)
+    {
+        bool result = false;
+        if (expIdx % 2 == 0)
+        {
+            return myExpression[expIdx].type == CardType.Number ? true : false;
+        }
+        if (expIdx % 2 != 0)
+        {
+            return myExpression[expIdx].type == CardType.Operator ? true : false;
+        }
+        return result;
     }
 
     public int ReturnResult()
     {
-        int result;
-
-        MakeMove();
+        int result = 0;
+        SetOptimalExpression();
         result = CalculateExpression();
 
         return result;
