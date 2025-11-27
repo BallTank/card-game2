@@ -2,6 +2,14 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
+/*
+ * Rule: 
+ * 1. provide 2 operator cards and random 5 number cards
+ * 2. pick 3 number cards and 2 operator cards then make the highest number.
+ * 
+ * This class controls the game flow.
+ */
+
 public class GameManager : MonoBehaviour
 {
     public GameView gameView;
@@ -38,12 +46,21 @@ public class GameManager : MonoBehaviour
 
     private void OnCardClicked(Card clickedCard)
     {
-        // Add to the player expression
+        int currentResult = 0;
+        bool isValid = false;
         player.myExpression.Add(clickedCard);
 
-        int currentResult = player.CalculateCurrentExpression(player.myExpression);
-        gameView.DisplayResult(result: currentResult, isPlayer: true);
-        gameView.DisplaySingleCard(card: clickedCard); // this part give unclickable card
+        (currentResult, isValid) = player.CalculateCurrentExpression(player.myExpression);
+        if (isValid)
+        {
+            // Add to the player expression
+            gameView.DisplayResult(result: currentResult, isPlayer: true);
+            gameView.DisplaySingleCard(card: clickedCard); // this part give unclickable card
+        }
+        else
+        {
+            Debug.Log($"isValid: {isValid}!");
+        }
     }
 
     // Calculate button method
@@ -93,7 +110,7 @@ public class GameManager : MonoBehaviour
         // if a method subscribed, unsubscribe it
     }
     private void Update()
-    {      
+    {
         // player makes an expression.
         // how to get the player's expression?
     }
