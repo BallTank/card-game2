@@ -70,6 +70,7 @@ public class GameView : MonoBehaviour
         {
             Destroy(child.gameObject);
         }
+
         foreach (Card card in handCards)
         {
             DisplaySingleCard(card: card, onClick: onCardClicked,
@@ -135,7 +136,7 @@ public class GameView : MonoBehaviour
         DisplayResult(result: 0, isPlayer: true);
     }
 
-    public void DisplayResult(int result, bool isPlayer)
+    public void DisplayResult(float result, bool isPlayer)
     {
         TMP_Text textContainer = isPlayer ? playerResultText : aiResultText;
         textContainer.text = "";

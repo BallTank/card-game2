@@ -1,12 +1,14 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+[SerializeField]
 public abstract class PlayerBase
 {
     // this has the common things of the player and ai    
     // calculate the expressions
     // ai picks its own cards
 
+   public int cardCount = 5;
     public List<Card> myHand = new List<Card>();
 
     // how to get the expression?
@@ -17,62 +19,146 @@ public abstract class PlayerBase
     {
         // provide 2 operator cards and random 5 number cards
         myHand.Clear();
-        myHand.AddRange(deckManager.GetNumberDeck(count: 5));
+        myHand.AddRange(deckManager.GetNumberDeck(count: cardCount));
         myHand.AddRange(deckManager.GetOperatorDeck());
     }
 
-    // As calulate button pressed
-    // this method calculates both expressions of ai and player    
-    // TODO: Multiply and divide are not consiered
-    public int CalculateExpression()
+    /*
+     * As calulate button pressed
+     * this method calculates both expressions of ai and player
+     * 
+     * The first algorithm is linear. 
+     * As mulplication, division added, 
+     * the expression should search for them first.      
+     */
+    public float CalculateExpression()
     {
         if (myExpression.Count == 0) return 0;
 
-        int result = 0;
-        Card preOprtCard = null;
+        List<Card> copyExpression = myExpression.ConvertAll((card) => new Card(card));
 
-        for (int i = 0; i < myExpression.Count; i++)
+        float result = 0;
+
+        int multiIdx = int.MinValue;
+        int divIdx = int.MinValue;
+
+        // find the index of multiplication, division
+        for (int i = 0; i < copyExpression.Count; i++)
         {
-            if (i % 2 == 0) // number
+            if (copyExpression[i].type == CardType.Operator)
             {
-                if (myExpression[i].type == CardType.Operator)  // validation check
+                if(copyExpression[i].operatorValue == OperatorEnum.Multiply)
                 {
-                    break;
-                }
-
-                if (preOprtCard is null)
-                { // first number                
-
-                    result += myExpression[i].numberValue;
-                }
-                else
+                    multiIdx = i;
+                } else if (copyExpression[i].operatorValue == OperatorEnum.Divide)
                 {
-                    if (preOprtCard.operatorValue == OperatorEnum.Plus)
-                    {
-                        result += myExpression[i].numberValue;
-                    }
-                    else if (preOprtCard.operatorValue == OperatorEnum.Minus)
-                    {
-                        result -= myExpression[i].numberValue;
-                    }
-                    preOprtCard = null;
+                    divIdx = i;
                 }
-            }
-            else // operator
-            {
-                if (myExpression[i].type == CardType.Number)  // validation check
-                {
-                    break;
-                }
-                preOprtCard = myExpression[i];
             }
         }
+
+        if (multiIdx > 0)
+        {
+            int multiResult = copyExpression[multiIdx - 1].numberValue * copyExpression[multiIdx + 1].numberValue;
+
+            // if it has plus or minus
+            if (multiIdx-2 > 0)
+            {
+                if(copyExpression[multiIdx - 2].operatorValue == OperatorEnum.Minus)
+                {
+                    // apply minus
+                    multiResult = -multiResult;
+                }
+                //copyExpression.RemoveAt(multiIdx - 2);
+            }
+            //copyExpression.RemoveRange(multiIdx - 1, 3);
+            result += multiResult;
+        }
+        if (divIdx > 0)
+        {
+            float divResult = copyExpression[divIdx - 1].numberValue / copyExpression[divIdx + 1].numberValue;
+
+            // if it has plus or minus
+            if (divIdx - 2 > 0)
+            {
+                if (copyExpression[divIdx - 2].operatorValue == OperatorEnum.Minus)
+                {
+                    // apply minus
+                    divResult = -divResult;
+
+                    //copyExpression.RemoveAt(divIdx - 2);
+                }
+            }
+            //copyExpression.RemoveRange(divIdx - 1, 3);
+            result += divResult;
+        }
+
+        // remove those multiplication and division things
+        int originListCount = copyExpression.Count;
+        int removedListCount = int.MinValue;
+        if (multiIdx > 0)
+        {
+            if (multiIdx - 2 > 0)
+            {
+                copyExpression.RemoveAt(multiIdx - 2);
+            }
+            copyExpression.RemoveRange(multiIdx - 1, 3);
+        }
+
+        // move divIdx as removed idx
+        removedListCount = myExpression.Count - copyExpression.Count;
+        divIdx = divIdx - removedListCount;
+
+        if (divIdx > 0)
+        {
+            // TODO: fix here: remove - 4 / 3 -> count: 4 how to deal with it?
+            copyExpression.RemoveRange(divIdx - 2, 4); // remove - 4 / 3 -> count: 4
+        }
+
+
+        for (int i = 0; i < copyExpression.Count; i += 2)
+        {
+            // number
+            if(i % 2 == 0)
+            {
+                //operator
+                if (i - 1 > 0) 
+                {
+                    if (copyExpression[i-1].operatorValue == OperatorEnum.Minus)
+                    {
+                        result -= copyExpression[i].numberValue;
+                    }
+                    else
+                    {
+                        result += copyExpression[i].numberValue;
+                    }
+                }
+            }
+        }
+
         return result;
     }
 
-    // Set my hand's best expresison
-    // TODO: Validation
-    //public bool SetOptimalExpression()
+    /* Set my hand's best expresison
+     * 
+     * Logic     
+     * Multiply 1st highest and 2nd highest
+     * Plus the 3rd highest
+     * Subtract from the 1st smallest
+     * Divide by the 2nd smallest
+     * 
+     * Warning
+     * No divide by 0
+     * Multiply and Divide should go first (this also counts to player expresison)
+     * 9 8 7 6 5
+     * 9 * 8 + 7 / 6 - 5 = 68.16
+     * 9 * 8 + 7 / 5 - 6 = 67.4
+     * 9 * 8 / 5 + 7 - 6 = 15.4
+     * 9 * 8 + 6 - 5 / 7 = 77.28
+     * 9 * 8 + 7 - 5 / 6 = 78.16 (best)
+     * 9 * 8 - 5 / 6 + 7 (same above)
+     * 7 + 9 * 8 - 5 / 6  (same above)
+    */
     public void SetOptimalExpression()
     {
         myExpression.Clear();
@@ -95,11 +181,16 @@ public abstract class PlayerBase
 
         nums.Sort((a, b) => a.numberValue.CompareTo(b.numberValue));
 
-        Card highestNum1Card = nums[nums.Count - 1];
-        Card highestNum2Card = nums[nums.Count - 2];
-        Card lowestNumCard = nums[0];
+        Card no1highestNumCard = nums[nums.Count - 1];
+        Card no2highestNumCard = nums[nums.Count - 2];
+        Card no3highestNumCard = nums[nums.Count - 3];
+        Card no1LowestNumCard = nums[0];
+        // check zero for division
+        Card no2LowestNumCard = nums[1].numberValue != 0 ? nums[1] : nums[2];
         Card plusCard = null;
         Card minusCard = null;
+        Card multiplyCard = null;
+        Card divideCard = null;
 
         foreach (Card card in ops)
         {
@@ -111,15 +202,28 @@ public abstract class PlayerBase
             {
                 minusCard = card;
             }
+            else if (card.operatorValue == OperatorEnum.Multiply)
+            {
+                multiplyCard = card;
+            }
+            else if (card.operatorValue == OperatorEnum.Divide)
+            {
+                divideCard = card;
+            }
         }
 
-        if (plusCard is not null && minusCard is not null)
+        if (plusCard is not null && minusCard is not null
+            && multiplyCard is not null && divideCard is not null)
         {
-            myExpression.Add(highestNum1Card);
+            myExpression.Add(no1highestNumCard);
+            myExpression.Add(multiplyCard);
+            myExpression.Add(no2highestNumCard);
             myExpression.Add(plusCard);
-            myExpression.Add(highestNum2Card);
+            myExpression.Add(no3highestNumCard);
             myExpression.Add(minusCard);
-            myExpression.Add(lowestNumCard);
+            myExpression.Add(no1LowestNumCard);
+            myExpression.Add(divideCard);
+            myExpression.Add(no2LowestNumCard);
         }
         //return true;
     }
@@ -128,20 +232,69 @@ public abstract class PlayerBase
     public bool CheckInputValidation(int expIdx)
     {
         bool result = false;
-        if (expIdx % 2 == 0)
+
+        //Debug.Log($"CheckOrder(expIdx): {CheckOrder(expIdx)} " +
+        //    $"CheckDuplication(expIdx): {CheckDuplication(expIdx)} " +
+        //    $"CheckDividedByZero(expIdx): {CheckDividedByZero(expIdx)} ");
+
+        if (CheckOrder(expIdx) && CheckDuplication(expIdx) && CheckDividedByZero(expIdx))
         {
-            return myExpression[expIdx].type == CardType.Number ? true : false;
+            result = true;
         }
-        if (expIdx % 2 != 0)
-        {
-            return myExpression[expIdx].type == CardType.Operator ? true : false;
-        }
+        //if (CheckDuplication(expIdx))
+        //{
+        //    result = true;
+        //}
+
         return result;
     }
 
-    public int ReturnResult()
+    public bool CheckOrder(int expIdx)
     {
-        int result = 0;
+        // if it's Num Opr Num Opr Num pattern, return true
+        bool result = false;
+
+        if (expIdx % 2 == 0)
+        {
+            result = myExpression[expIdx].type == CardType.Number ? true : false;
+        }
+        else if (expIdx % 2 != 0)
+        {
+            result = myExpression[expIdx].type == CardType.Operator ? true : false;
+        }
+
+        return result;
+    }
+
+    public bool CheckDuplication(int expIdx)
+    {
+        // if it's not duplicate, then return true
+        bool result = false;
+
+        result = myExpression.Contains(myExpression[expIdx]);
+
+        return result;
+    }
+
+    public bool CheckDividedByZero(int expIdx)
+    {
+        bool result = true;
+
+        // if it's not zero, return true
+        if(myExpression[expIdx].type == CardType.Operator && 
+            myExpression[expIdx].operatorValue == OperatorEnum.Divide &&
+            expIdx + 1 > myExpression.Count && // to cover the range below
+            myExpression[expIdx + 1].numberValue == 0)
+        {
+           result = false;
+        }
+        
+        return result;
+    }
+
+    public float ReturnResult()
+    {
+        float result = 0;
         SetOptimalExpression();
         result = CalculateExpression();
 

@@ -14,6 +14,14 @@ public class Card
     public int numberValue;             // in case the type is Number
     public OperatorEnum operatorValue;  // in case the type is Operator
 
+    // to make a deep copy list
+    public Card(Card original)
+    {
+        this.type = original.type;
+        this.operatorValue = original.operatorValue;
+        this.numberValue = original.numberValue;
+    }
+
     // Constructor for Number Cards
     public Card(int number)
     {
@@ -104,6 +112,8 @@ public class DeckManager
         List<Card> ops = new List<Card>();
         ops.Add(new Card(OperatorEnum.Plus));
         ops.Add(new Card(OperatorEnum.Minus));
+        ops.Add(new Card(OperatorEnum.Multiply));
+        ops.Add(new Card(OperatorEnum.Divide));
 
         return ops;
     }
