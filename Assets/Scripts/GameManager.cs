@@ -17,8 +17,9 @@ public class GameManager : MonoBehaviour
     public AIPlayer ai;
 
     private DeckManager deckManager;
-    private int playerResult;
-    private int aiResult;
+    private float playerResult;
+    private float playerOldResult;
+    private float aiResult;
 
     private void Awake()
     {
@@ -46,28 +47,25 @@ public class GameManager : MonoBehaviour
 
     private void OnCardClicked(Card clickedCard)
     {
-        int currentResult = 0;
+        float currentResult = playerOldResult;
         bool isValid = false;
         player.myExpression.Add(clickedCard);
 
-        (currentResult, isValid) = player.CalculateCurrentExpression(player.myExpression);
+        (currentResult, isValid) = player.CalculateCurrentExpression(player.myExpression, playerOldResult);
+        playerOldResult = currentResult;
         if (isValid)
         {
             // Add to the player expression
             gameView.DisplayResult(result: currentResult, isPlayer: true);
             gameView.DisplaySingleCard(card: clickedCard); // this part give unclickable card
         }
-        else
-        {
-            Debug.Log($"isValid: {isValid}!");
-        }
     }
 
     // Calculate button method
     public string OnCalculatePressed(HumanPlayer player, AIPlayer ai)
     {
-        int playerResult = player.CalculateExpression();
-        int aiResult = ai.CalculateExpression();
+        float playerResult = player.CalculateExpression();
+        float aiResult = ai.CalculateExpression();
 
         //ai.MakeMove();
         //int aiResult = ai.CalculateExpression();       
